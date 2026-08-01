@@ -68,6 +68,13 @@ def main():
             print(f"  {i+1}/{len(syms)}  ok={len(out)} fail={failed} "
                   f"({el/60:.1f} min)")
     df = pd.DataFrame(out)
+    # Yahoo sometimes returns strings like 'Infinity' in numeric fields;
+    # coerce everything numeric and drop infinities so parquet can save.
+    for c in df.columns:
+        if c not in ("symbol", "sector"):
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+    df = df.replace([np.inf, -np.inf], np.nan)
+    df["sector"] = df["sector"].astype(str)
     today = datetime.date.today().isoformat()
     df["asof"] = today
     os.makedirs("data/history", exist_ok=True)
