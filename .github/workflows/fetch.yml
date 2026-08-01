@@ -1,0 +1,31 @@
+name: Nightly data fetch
+on:
+  schedule:
+    - cron: "45 1 * * 2-6"   # 01:45 UTC Tue-Sat = after each US close
+  workflow_dispatch: {}       # manual run button
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Fetch fundamentals
+        run: python scripts/fetch_fundamentals.py
+      - name: Fetch options metrics
+        run: python scripts/fetch_options.py
+        continue-on-error: true   # options are best-effort
+      - name: Commit data
+        run: |
+          git config user.name "edge-scanner-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "data: $(date -u +%F)"
+          git push
